@@ -1,0 +1,296 @@
+############################## Importações ##############################
+# Bibliotetecas gerais
+import pandas as pd
+import numpy as np
+
+# Modelagem
+    # Algoritmos
+from sklearn.pipeline import make_pipeline
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import (
+    RandomForestClassifier,
+    HistGradientBoostingClassifier,
+    CategoricalNB,
+    BaggingClassifier,
+    StackingClassifier
+)
+from sklearn.decomposition import PCA
+    # Métricas
+from sklearn.metrics import (
+    confusion_matrix,
+    make_scorer,
+    roc_auc_score
+)
+from sklearn.model_selection import cross_val_score, StratifiedKFold
+
+import optuna
+from optuna import create_study
+optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+# Semente aleatória
+RANDOM_SEED = 3001
+
+############################## Definições ##############################
+ATRIBUTOS = [
+    "ra", "dec", "l", "b", "silicate",
+    "pah", "env", "mag3_6", "e_mag3_6",
+    "mag4_5", "e_mag4_5", "mag5_8", "e_mag5_8", "mag8_0",
+    "e_mag8_0", "csf", "m3_6", "m4_5", "m5_8", "m8_0"
+]
+TARGET = ["class"]
+
+df_treino = pd.read_csv("YSOs-Dados_treino-Ordinal_encoder-Balanceado.csv")
+
+X_treino = df_treino.reindex(ATRIBUTOS, axis=1).values
+y_treino = df_treino.reindex(TARGET, axis=1).values.ravel()
+
+############################# Instancias #############################
+def cria_instancia_kNN(trial):
+    """Cria uma instância do modelo de k-NN.
+
+    Args:
+      trial: objeto tipo Trial do optuna.
+
+    Returns:
+      Uma instância do modelo desejado.
+    """
+
+    parametros = {
+        # Espaço de busca
+        "n_neighbors": trial.suggest_int("n_neighbors", 5, 500, log=True),
+        "wights": trial.suggest_categorical("weights", ["uniform", "distance"]),
+        "p": trial.suggest_float("p", 1.0, 2),
+        # Argumentos fixos
+        "n_jobs": -1,
+        "random_state": RANDOM_SEED,
+    }
+
+    n_features = trial.suggest_int("n_components", 10, 15)
+
+    modelo = make_pipeline(
+        PCA(n_features),
+        KNeighborsClassifier(**parametros)
+    )
+
+    return modelo
+
+def cria_instancia_tree(trial):
+    """Cria uma instância do modelo de árvore de decisão.
+
+    Args:
+      trial: objeto tipo Trial do optuna.
+
+    Returns:
+      Uma instância do modelo desejado.
+    """
+
+    parametros = {
+        # Espaço de busca
+        "criterion": trial.suggest_categorical("criterion", ["gini", "entropy", "log_loss"]),
+        "max_depth": trial.suggest_int("max_depth", 3, 10),
+        "min_samples_split": trial.suggest_float("min_samples_split", 0.001, 0.05, log=True),
+        "min_samples_leaf": trial.suggest_float("mins_samples_leaf", 0.001, 0.05, log=True),
+        "max_leaf_nodes": trial.suggest_int("max_leaf_nodes", 6, 200, log=True),
+        "min_impurity_decrease": trial.suggest_float("min_impurity_decrease", 0.0, 0.5),
+        # Argumentos fixos
+        "n_jobs": -1,
+        "random_state": RANDOM_SEED,
+    }
+
+    n_features = trial.suggest_int("n_components", 10, 18)
+
+    modelo = make_pipeline(
+        PCA(n_features),
+        DecisionTreeClassifier(**parametros)
+    )
+
+    return modelo
+
+def cria_instancia_forest(trial):
+    """Cria uma instância do modelo de floresta aleatória.
+
+    Args:
+      trial: objeto tipo Trial do optuna.
+
+    Returns:
+      Uma instância do modelo desejado.
+    """
+
+    parametros = {
+        # Espaço de busca
+        "n_estimators": trial.suggest_int("n_estimators", 10, 300, log=True),
+        "criterion": trial.suggest_categorical("criterion", ["gini", "entropy", "log_loss"]),
+        "max_depth": trial.suggest_int("max_depth", 3, 10),
+        "min_samples_split": trial.suggest_float("min_samples_split", 0.001, 0.05, log=True),
+        "min_samples_leaf": trial.suggest_float("mins_samples_leaf", 0.001, 0.05, log=True),
+        "max_features": trial.suggest_float("max_features", 0.2, 1.0),
+        "max_leaf_nodes": trial.suggest_int("max_leaf_nodes", 6, 200, log=True),
+        "min_impurity_decrease": trial.suggest_float("min_impurity_decrease", 0.0, 0.5),
+        # Argumentos fixos
+        "n_jobs": -1,
+        "bootstrap": True,
+        "random_state": RANDOM_SEED,
+    }
+
+    n_features = trial.suggest_int("n_components", 10, 18)
+
+    modelo = make_pipeline(
+        PCA(n_features),
+        DecisionTreeClassifier(**parametros)
+    )
+
+    return modelo
+
+def cria_instancia_kNN_ensemble(trial):
+    """Cria uma instância do modelo de floresta aleatória.
+
+    Args:
+      trial: objeto tipo Trial do optuna.
+
+    Returns:
+      Uma instância do modelo desejado.
+    """
+
+    parametros_kNN = {
+        # Espaço de busca
+        "n_neighbors": trial.suggest_int("n_neighbors", 5, 500, log=True),
+        "wights": trial.suggest_categorical("weights", ["uniform", "distance"]),
+        "p": trial.suggest_float("p", 1.0, 2),
+        #Argumentos fixos
+        "n_jobs": -1,
+        "random_state": RANDOM_SEED,
+    }
+
+    parametros_ensamble = {
+        # Espaço de busca
+        "n_estimators": trial.suggest_int("n_estimators", 10, 500, log=True),
+        "max_samples": trial.suggest_float("max_samples", 0.5, 1.0),
+        "max_features": trial.suggest_float("max_features", 0.2, 1.0),
+        # Argumentos fixos
+        "estimator": KNeighborsClassifier(**parametros_kNN),
+        "bootstrap": True,
+        "n_jobs": -1,
+        "random_state": RANDOM_SEED,
+    }
+
+    n_features = trial.suggest_int("n_components", 10, 15)
+
+    modelo = make_pipeline(
+        PCA(n_features),
+        BaggingClassifier(**parametros_kNN)
+    )
+
+    return modelo
+
+def cria_instancia_HGradientBoosting(trial):
+    """Cria uma instância do modelo de floresta aleatória.
+
+    Args:
+      trial: objeto tipo Trial do optuna.
+
+    Returns:
+      Uma instância do modelo desejado.
+    """
+
+    parametros = {
+        # Espaço de busca
+        "learning_rate": trial.suggest_float("learning_rate", 0.0, 1.0),
+        "max_iter": trial.suggest_int("max_iter", 100, 300),
+        "max_leaf_nodes": trial.suggest_int("max_leaf_nodes", 6, 150, log=True),
+        "max_depth": trial.suggest_int("max_depth", 3, 10),
+        "min_samples_leaf": trial.suggest_int("min_samples_leaf", 100, 500),
+        "l2_regularization": trial.suggest_float("l2_regularization", 0.0, 9.0),
+        "max_features": trial.suggest_float("max_features", 0.2, 1.0),
+        "max_bins": trial.suggest_int("max_bins", 100, 400),
+
+        # Argumentos fixos
+        "validation_fraction": 0.1,
+        "verbose": 1,
+        "n_jobs": -1,
+        "random_state": RANDOM_SEED,
+    }
+
+    n_features = trial.suggest_int("n_components", 10, 18)
+
+    modelo = make_pipeline(
+        PCA(n_features),
+        HistGradientBoostingClassifier(**parametros)
+    )
+
+    return modelo
+
+def cria_instancia_NB(trial):
+    """Cria uma instância do modelo de floresta aleatória.
+
+    Args:
+      trial: objeto tipo Trial do optuna.
+
+    Returns:
+      Uma instância do modelo desejado.
+    """
+
+    parametros = {
+        # Espaço de busca
+        "alpha": trial.suggest_float("alpha", 0.0, 1.0),
+        # Argumentos fixos
+        "force_alpha": True,
+        "n_jobs": -1,
+        "random_state": RANDOM_SEED,
+    }
+
+    n_features = trial.suggest_int("n_components", 10, 18)
+
+    modelo = make_pipeline(
+        PCA(n_features),
+        CategoricalNB(**parametros)
+    )
+
+    return modelo
+
+def cria_instancia_stacking(trial):
+    """Cria uma instância do modelo de floresta aleatória.
+
+    Args:
+      trial: objeto tipo Trial do optuna.
+
+    Returns:
+      Uma instância do modelo desejado.
+    """
+
+    parametros = {
+        # Espaço de busca
+        "stack_method": trial.suggest_categorical("stack_method", ['auto', 'predict_proba', 'decision_function', 'predict'])
+        # Argumentos fixos
+        "cv": StratifiedKFold(5, shuffle=True, random_state=True),
+        "n_jobs": -1,
+        "random_state": RANDOM_SEED,
+    }
+
+    n_features = trial.suggest_int("n_components", 10, 18)
+
+    modelo = make_pipeline(
+        PCA(n_features),
+        StackingClassifier(**parametros)
+    )
+
+    return modelo
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
