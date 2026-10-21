@@ -10,10 +10,10 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svc import LinearSVC
 from sklearn.linear_model import RidgeClassifierCV
+from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import (
     RandomForestClassifier,
     HistGradientBoostingClassifier,
-    CategoricalNB,
     BaggingClassifier,
     StackingClassifier
 )
@@ -33,6 +33,7 @@ from optuna import create_study
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 from optuna.samplers import GPSampler
 from functools import partial
+from sklearn.calibration import CalibratedClassifierCV
 
 # Semente aleatória
 RANDOM_SEED = 3001
@@ -61,6 +62,9 @@ y_treino = df_treino.reindex(TARGET, axis=1).values.ravel()
 
 X_treino_b = df_treino_b.reindex(ATRIBUTOS, axis=1).values
 y_treino_b = df_treino_b.reindex(TARGET).values.ravel()
+
+# Definindo métrica ROC-AUC
+ras = make_scorer(roc_auc_score, average="weighted", response_method="predict_proba")
 
 ############################# Instancias #############################
 def cria_instancia_kNN(trial):
@@ -260,10 +264,7 @@ def cria_instancia_NB(trial):
 
     n_features = trial.suggest_int("n_components", 10, 18)
 
-    modelo = make_pipeline(
-        PCA(n_features),
-        CategoricalNB(**parametros)
-    )
+    modelo = GaussianNB(**parametros)
 
     return modelo
 
@@ -279,7 +280,7 @@ def cria_instancia_Stacking(trial):
 
     parametros_LinearSVC = {
       # Espaço de busca
-      "penality": trial.suggest_categorical("penality", ["l1", "l2"]),
+      "penalty": trial.suggest_categorical("penalty", ["l1", "l2"]),
       "loss": trial.suggest_categorical("loss", ['hinge', 'squared_hinge']),
       "tol": trial.suggest_float("tol", 1e-4, 0.01, log=True),
       "C": trial.suggest_float("C", 1e-3, 5.0, log=True),
@@ -318,10 +319,15 @@ def cria_instancia_Stacking(trial):
         "force_alpha": True,
     }
 
+    lsvc = CalibratedClassifierCV(
+        LinearSVC(**parametros_LinearSVC),
+        cv=5
+    )
+
     estimators = [
-      ("lsvc", LinearSVC(**parametros_LinearSVC)),
+      ("lsvc", lsvc),
       ("rfc", RandomForestClassifier(**parametros_forest )),
-      ("cnb", CategoricalNB(**parametros_NB))
+      ("cnb", GaussianNB(**parametros_NB))
     ]
 
     alphas_ridge = np.array([
@@ -353,7 +359,7 @@ def cria_instancia_Stacking(trial):
     }
 
     if multicamada:
-        parametros_ultimate_stacking = parametros_stacking
+        parametros_ultimate_stacking = parametros_stacking.copy()
         parametros_stacking["final_estimator"] = StackingClassifier(**parametros_ultimate_stacking)
 
     n_features = trial.suggest_int("n_components", 10, 18)
@@ -367,9 +373,6 @@ def cria_instancia_Stacking(trial):
 
 
 ############################## Funções Objetivo ###########################
-
-# Definindo métrica ROC-AUC
-ras = make_scorer(roc_auc_score, average="weighted", response_method="predict_proba")
 
 def funcao_objetivo_kNN(trial, X, y, n_folds):
     """Função objetivo do optuna
@@ -637,7 +640,7 @@ objeto_de_estudo_forest.enqueue_trial({
     "min_samples_split": 2,
     "min_samples_leaf": 1,
     "min_weight_fraction_leaf": 0.0,
-    "max_features": 0.33,
+    "max_features": 0.3,
     "max_leaf_nodes": 200,
     "min_impurity_decrease": 0.0,
     "class_weight": "balanced"
@@ -650,7 +653,7 @@ objeto_de_estudo_forest.enqueue_trial({
     "min_samples_split": 2,
     "min_samples_leaf": 1,
     "min_weight_fraction_leaf": 0.0,
-    "max_features": 0.33,
+    "max_features": 0.3,
     "max_leaf_nodes": 200,
     "min_impurity_decrease": 0.0,
     "class_weight": "balanced_subsample"
@@ -674,7 +677,7 @@ objeto_de_estudo_kNN_ensemble.enqueue_trial({
 
     "n_estimators": 10,
     "max_samples": 1.0,
-    "max_features": 0.33
+    "max_features": 0.3
 })
 
 objeto_de_estudo_kNN_ensemble.enqueue_trial({
@@ -694,7 +697,7 @@ objeto_de_estudo_kNN_ensemble.enqueue_trial({
 
     "n_estimators": 100,
     "max_samples": 1.0,
-    "max_features": 0.33
+    "max_features": 0.3
 })
 
 # HistGradientBoosting
@@ -716,7 +719,7 @@ objeto_de_estudo_HGradientBoosting.enqueue_trial({
     "max_depth": 100,
     "min_samples_leaf": 20,
     "l2_regularization": 0.0,
-    "max_features": 0.33,
+    "max_features": 0.3,
     "max_bins": 255
 })
 
@@ -728,7 +731,7 @@ objeto_de_estudo_NB.enqueue_trial({
 # Stackig
 objeto_de_estudo_Stacking.enqueue_trial({
     # Linear CVS
-    "penality": "l2",
+    "penalty": "l2",
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
@@ -741,7 +744,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "min_samples_split": 2,
     "min_samples_leaf": 1,
     "min_weight_fraction_leaf": 0.0,
-    "max_features": 0.33,
+    "max_features": 0.3,
     "max_leaf_nodes": 200,
     "min_impurity_decrease": 0.0,
     "class_weight": "balanced",
@@ -760,7 +763,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
 
 objeto_de_estudo_Stacking.enqueue_trial({
     # Linear CVS
-    "penality": "l2",
+    "penalty": "l2",
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
@@ -773,7 +776,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "min_samples_split": 2,
     "min_samples_leaf": 1,
     "min_weight_fraction_leaf": 0.0,
-    "max_features": 0.33,
+    "max_features": 0.3,
     "max_leaf_nodes": 200,
     "min_impurity_decrease": 0.0,
     "class_weight": "balanced",
@@ -792,7 +795,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
 
 objeto_de_estudo_Stacking.enqueue_trial({
     # Linear CVS
-    "penality": "l2",
+    "penalty": "l2",
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
@@ -805,7 +808,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "min_samples_split": 2,
     "min_samples_leaf": 1,
     "min_weight_fraction_leaf": 0.0,
-    "max_features": 0.33,
+    "max_features": 0.3,
     "max_leaf_nodes": 200,
     "min_impurity_decrease": 0.0,
     "class_weight": "balanced",
@@ -824,7 +827,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
 
 objeto_de_estudo_Stacking.enqueue_trial({
     # Linear CVS
-    "penality": "l2",
+    "penalty": "l2",
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
@@ -837,7 +840,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "min_samples_split": 2,
     "min_samples_leaf": 1,
     "min_weight_fraction_leaf": 0.0,
-    "max_features": 0.33,
+    "max_features": 0.3,
     "max_leaf_nodes": 200,
     "min_impurity_decrease": 0.0,
     "class_weight": "balanced_subsample",
@@ -856,7 +859,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
 
 objeto_de_estudo_Stacking.enqueue_trial({
     # Linear CVS
-    "penality": "l2",
+    "penalty": "l2",
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
@@ -869,7 +872,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "min_samples_split": 2,
     "min_samples_leaf": 1,
     "min_weight_fraction_leaf": 0.0,
-    "max_features": 0.33,
+    "max_features": 0.3,
     "max_leaf_nodes": 200,
     "min_impurity_decrease": 0.0,
     "class_weight": "balanced_subsample",
@@ -888,7 +891,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
 
 objeto_de_estudo_Stacking.enqueue_trial({
     # Linear CVS
-    "penality": "l2",
+    "penalty": "l2",
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
@@ -901,7 +904,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "min_samples_split": 2,
     "min_samples_leaf": 1,
     "min_weight_fraction_leaf": 0.0,
-    "max_features": 0.33,
+    "max_features": 0.3,
     "max_leaf_nodes": 200,
     "min_impurity_decrease": 0.0,
     "class_weight": "balanced_subsample",
@@ -920,7 +923,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
 
 objeto_de_estudo_Stacking.enqueue_trial({
     # Linear CVS
-    "penality": "l2",
+    "penalty": "l2",
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
@@ -933,7 +936,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "min_samples_split": 2,
     "min_samples_leaf": 1,
     "min_weight_fraction_leaf": 0.0,
-    "max_features": 0.33,
+    "max_features": 0.3,
     "max_leaf_nodes": 200,
     "min_impurity_decrease": 0.0,
     "class_weight": "balanced",
@@ -952,7 +955,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
 
 objeto_de_estudo_Stacking.enqueue_trial({
     # Linear CVS
-    "penality": "l2",
+    "penalty": "l2",
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
@@ -965,7 +968,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "min_samples_split": 2,
     "min_samples_leaf": 1,
     "min_weight_fraction_leaf": 0.0,
-    "max_features": 0.33,
+    "max_features": 0.3,
     "max_leaf_nodes": 200,
     "min_impurity_decrease": 0.0,
     "class_weight": "balanced_subsample",
@@ -986,7 +989,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
 
 objeto_de_estudo_Stacking.enqueue_trial({
     # Linear CVS
-    "penality": "l2",
+    "penalty": "l2",
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
@@ -999,7 +1002,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "min_samples_split": 2,
     "min_samples_leaf": 1,
     "min_weight_fraction_leaf": 0.0,
-    "max_features": 0.33,
+    "max_features": 0.3,
     "max_leaf_nodes": 200,
     "min_impurity_decrease": 0.0,
     "class_weight": "balanced",
@@ -1018,7 +1021,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
 
 objeto_de_estudo_Stacking.enqueue_trial({
     # Linear CVS
-    "penality": "l2",
+    "penalty": "l2",
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
@@ -1031,7 +1034,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "min_samples_split": 2,
     "min_samples_leaf": 1,
     "min_weight_fraction_leaf": 0.0,
-    "max_features": 0.33,
+    "max_features": 0.3,
     "max_leaf_nodes": 200,
     "min_impurity_decrease": 0.0,
     "class_weight": "balanced",
@@ -1050,7 +1053,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
 
 objeto_de_estudo_Stacking.enqueue_trial({
     # Linear CVS
-    "penality": "l2",
+    "penalty": "l2",
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
@@ -1063,7 +1066,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "min_samples_split": 2,
     "min_samples_leaf": 1,
     "min_weight_fraction_leaf": 0.0,
-    "max_features": 0.33,
+    "max_features": 0.3,
     "max_leaf_nodes": 200,
     "min_impurity_decrease": 0.0,
     "class_weight": "balanced",
@@ -1082,7 +1085,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
 
 objeto_de_estudo_Stacking.enqueue_trial({
     # Linear CVS
-    "penality": "l2",
+    "penalty": "l2",
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
@@ -1095,7 +1098,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "min_samples_split": 2,
     "min_samples_leaf": 1,
     "min_weight_fraction_leaf": 0.0,
-    "max_features": 0.33,
+    "max_features": 0.3,
     "max_leaf_nodes": 200,
     "min_impurity_decrease": 0.0,
     "class_weight": "balanced_subsample",
@@ -1114,7 +1117,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
 
 objeto_de_estudo_Stacking.enqueue_trial({
     # Linear CVS
-    "penality": "l2",
+    "penalty": "l2",
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
@@ -1127,7 +1130,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "min_samples_split": 2,
     "min_samples_leaf": 1,
     "min_weight_fraction_leaf": 0.0,
-    "max_features": 0.33,
+    "max_features": 0.3,
     "max_leaf_nodes": 200,
     "min_impurity_decrease": 0.0,
     "class_weight": "balanced_subsample",
@@ -1146,7 +1149,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
 
 objeto_de_estudo_Stacking.enqueue_trial({
     # Linear CVS
-    "penality": "l2",
+    "penalty": "l2",
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
@@ -1159,7 +1162,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "min_samples_split": 2,
     "min_samples_leaf": 1,
     "min_weight_fraction_leaf": 0.0,
-    "max_features": 0.33,
+    "max_features": 0.3,
     "max_leaf_nodes": 200,
     "min_impurity_decrease": 0.0,
     "class_weight": "balanced_subsample",
@@ -1178,7 +1181,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
 
 objeto_de_estudo_Stacking.enqueue_trial({
     # Linear CVS
-    "penality": "l2",
+    "penalty": "l2",
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
@@ -1191,7 +1194,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "min_samples_split": 2,
     "min_samples_leaf": 1,
     "min_weight_fraction_leaf": 0.0,
-    "max_features": 0.33,
+    "max_features": 0.3,
     "max_leaf_nodes": 200,
     "min_impurity_decrease": 0.0,
     "class_weight": "balanced",
@@ -1210,7 +1213,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
 
 objeto_de_estudo_Stacking.enqueue_trial({
     # Linear CVS
-    "penality": "l2",
+    "penalty": "l2",
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
@@ -1223,7 +1226,7 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "min_samples_split": 2,
     "min_samples_leaf": 1,
     "min_weight_fraction_leaf": 0.0,
-    "max_features": 0.33,
+    "max_features": 0.3,
     "max_leaf_nodes": 200,
     "min_impurity_decrease": 0.0,
     "class_weight": "balanced_subsample",
@@ -1244,11 +1247,11 @@ objeto_de_estudo_Stacking.enqueue_trial({
 NUM_TRIALS = 200
 
 objeto_de_estudo_kNN.optimize(
-    funcao_objetivo_parcial_kNN, n_trials=NUM_TRIALS/2
+    funcao_objetivo_parcial_kNN, n_trials=NUM_TRIALS//2
 )
 
 objeto_de_estudo_tree.optimize(
-    funcao_objetivo_parcial_tree, n_trials=NUM_TRIALS/2
+    funcao_objetivo_parcial_tree, n_trials=NUM_TRIALS//2
 )
 
 objeto_de_estudo_forest.optimize(
