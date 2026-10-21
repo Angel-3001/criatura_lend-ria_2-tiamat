@@ -8,6 +8,7 @@ import numpy as np
 from sklearn.pipeline import make_pipeline
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.svc import LinearSVC
 from sklearn.ensemble import (
     RandomForestClassifier,
     HistGradientBoostingClassifier,
@@ -23,6 +24,8 @@ from sklearn.metrics import (
     roc_auc_score
 )
 from sklearn.model_selection import cross_val_score, StratifiedKFold
+    # Normalização
+from sklean.preprocessing import StandardScaler
 
 import optuna
 from optuna import create_study
@@ -40,10 +43,14 @@ ATRIBUTOS = [
 ]
 TARGET = ["class"]
 
-df_treino = pd.read_csv("YSOs-Dados_treino-Ordinal_encoder-Balanceado.csv")
+df_treino = pd.read_csv("YSOs-Dados_treino-Ordinal_encoder.csv")
+df_treino_b = pd.read_csv("YSOs-Dados_treino-Ordinal_encoder-Balanceado.csv")
 
 X_treino = df_treino.reindex(ATRIBUTOS, axis=1).values
 y_treino = df_treino.reindex(TARGET, axis=1).values.ravel()
+
+X_treino_b = df_treino_b.reindex(ATRIBUTOS, axis=1).values
+y_treino_b = df_treino_b.reindex(TARGET).values.ravel()
 
 ############################# Instancias #############################
 def cria_instancia_kNN(trial):
@@ -70,6 +77,7 @@ def cria_instancia_kNN(trial):
 
     modelo = make_pipeline(
         PCA(n_features),
+        StandardScaler(),
         KNeighborsClassifier(**parametros)
     )
 
@@ -91,9 +99,11 @@ def cria_instancia_tree(trial):
         "max_depth": trial.suggest_int("max_depth", 3, 10),
         "min_samples_split": trial.suggest_float("min_samples_split", 0.001, 0.05, log=True),
         "min_samples_leaf": trial.suggest_float("mins_samples_leaf", 0.001, 0.05, log=True),
+        "min_weight_fraction_leaf": trial.suggest_float("min_weight_fraction_leaf", 0.0, 0,5),
         "max_leaf_nodes": trial.suggest_int("max_leaf_nodes", 6, 200, log=True),
         "min_impurity_decrease": trial.suggest_float("min_impurity_decrease", 0.0, 0.5),
         # Argumentos fixos
+        "class_weight": "balanced",
         "n_jobs": -1,
         "random_state": RANDOM_SEED,
     }
@@ -124,9 +134,11 @@ def cria_instancia_forest(trial):
         "max_depth": trial.suggest_int("max_depth", 3, 10),
         "min_samples_split": trial.suggest_float("min_samples_split", 0.001, 0.05, log=True),
         "min_samples_leaf": trial.suggest_float("mins_samples_leaf", 0.001, 0.05, log=True),
+        "min_weight_fraction_leaf": trial.suggest_float("min_weight_fraction_leaf", 0.0, 0,5),
         "max_features": trial.suggest_float("max_features", 0.2, 1.0),
         "max_leaf_nodes": trial.suggest_int("max_leaf_nodes", 6, 200, log=True),
         "min_impurity_decrease": trial.suggest_float("min_impurity_decrease", 0.0, 0.5),
+        "class_weight": trial.suggest_categorical("class_weight", "balanced", "balanced_subsample"),
         # Argumentos fixos
         "n_jobs": -1,
         "bootstrap": True,
@@ -178,6 +190,7 @@ def cria_instancia_kNN_ensemble(trial):
 
     modelo = make_pipeline(
         PCA(n_features),
+        StandardScaler(),
         BaggingClassifier(**parametros_kNN)
     )
 
@@ -207,6 +220,7 @@ def cria_instancia_HGradientBoosting(trial):
         # Argumentos fixos
         "validation_fraction": 0.1,
         "verbose": 1,
+        "class_weight": "balanced",
         "n_jobs": -1,
         "random_state": RANDOM_SEED,
     }
@@ -234,6 +248,7 @@ def cria_instancia_NB(trial):
         # Espaço de busca
         "alpha": trial.suggest_float("alpha", 0.0, 1.0),
         # Argumentos fixos
+        "fit_prior": True,
         "force_alpha": True,
         "n_jobs": -1,
         "random_state": RANDOM_SEED,
@@ -258,11 +273,49 @@ def cria_instancia_stacking(trial):
       Uma instância do modelo desejado.
     """
 
-    parametros = {
+    parametros_LinearSVC = {
+      # Espaço de busca
+      "penality": trial.suggest_categorical("penality", ["l1", "l2"]),
+      "loss": trial.suggest_categorical("loss", ['hinge', 'squared_hinge']),
+      "tol": trial.suggest_float("tol", 1e-4, 0.01, log=True),
+      "C": trial.suggest_float("C", 1e-3, 5, log=True),
+      "max_iter": trial.suggest_int("max_iter", 500, 5000, log=True),
+      # Argumentos fixos
+      "dual": "auto",
+      "multi_class": "ovr",
+      "class_weight": "balanced",
+      "n_jobs": -1,
+      "random_state": RANDOM_SEED,
+    }
+
+    parametros_forest = {
         # Espaço de busca
-        "stack_method": trial.suggest_categorical("stack_method", ['auto', 'predict_proba', 'decision_function', 'predict'])
+        "n_estimators": trial.suggest_int("n_estimators", 10, 300, log=True),
+        "criterion": trial.suggest_categorical("criterion", ["gini", "entropy", "log_loss"]),
+        "max_depth": trial.suggest_int("max_depth", 3, 10),
+        "min_samples_split": trial.suggest_float("min_samples_split", 0.001, 0.05, log=True),
+        "min_samples_leaf": trial.suggest_float("mins_samples_leaf", 0.001, 0.05, log=True),
+        "min_weight_fraction_leaf": trial.suggest_float("min_weight_fraction_leaf", 0.0, 0,5),
+        "max_features": trial.suggest_float("max_features", 0.2, 1.0),
+        "max_leaf_nodes": trial.suggest_int("max_leaf_nodes", 6, 200, log=True),
+        "min_impurity_decrease": trial.suggest_float("min_impurity_decrease", 0.0, 0.5),
+        "class_weight": trial.suggest_categorical("class_weight", "balanced", "balanced_subsample"),
         # Argumentos fixos
-        "cv": StratifiedKFold(5, shuffle=True, random_state=True),
+        "n_jobs": -1,
+        "bootstrap": True,
+        "random_state": RANDOM_SEED,
+    }
+
+    estimators = [
+      ("lsvc", LinearSVC(**parametros_LinearSVC)),
+      ("rfc", RandomForestClassifier(**parametros_forest ))
+    ]
+
+    parametros_stacking = {
+        # Espaço de busca
+        "stack_method": trial.suggest_categorical("stack_method", ['auto', 'predict_proba', 'decision_function', 'predict']),
+        # Argumentos fixos
+        "cv": StratifiedKFold(5, shuffle=True, random_state=RANDOM_SEED),
         "n_jobs": -1,
         "random_state": RANDOM_SEED,
     }
@@ -271,13 +324,15 @@ def cria_instancia_stacking(trial):
 
     modelo = make_pipeline(
         PCA(n_features),
-        StackingClassifier(**parametros)
+        StackingClassifier(**parametros_stacking)
     )
 
     return modelo
 
 
-
+############################## Funções Objetivo ###########################
+def funcao_objetivo_knn(trial, X, y, cv):
+    
 
 
 
