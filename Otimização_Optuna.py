@@ -43,8 +43,15 @@ ATRIBUTOS = [
 ]
 TARGET = ["class"]
 
+CLASSES = ["ClassI", "FS", "ClassII", "ClassIII"]
+
 df_treino = pd.read_csv("YSOs-Dados_treino-Ordinal_encoder.csv")
 df_treino_b = pd.read_csv("YSOs-Dados_treino-Ordinal_encoder-Balanceado.csv")
+
+pesos_classes = np.array([
+    len(df_treino)/(4 * len(df_treino.loc[df_treino["class"] == classe]))
+    for classe in CLASSES
+])
 
 X_treino = df_treino.reindex(ATRIBUTOS, axis=1).values
 y_treino = df_treino.reindex(TARGET, axis=1).values.ravel()
@@ -263,7 +270,7 @@ def cria_instancia_NB(trial):
 
     return modelo
 
-def cria_instancia_stacking(trial):
+def cria_instancia_Stacking(trial):
     """Cria uma instância do modelo de floresta aleatória.
 
     Args:
@@ -331,8 +338,212 @@ def cria_instancia_stacking(trial):
 
 
 ############################## Funções Objetivo ###########################
-def funcao_objetivo_knn(trial, X, y, cv):
-    
+
+# Definindo métrica ROC-AUC
+ras = make_scorer(roc_auc_score, average="weighted", response_method="predict_proba")
+
+def funcao_objetivo_kNN(trial, X, y, n_folds):
+    """Função objetivo do optuna
+
+    Referencia:
+      https://medium.com/@walter_sperat/ using-optuna-with-sklearn-the-right-way-part-1-6b4ad0ab2451
+    """
+
+    modelo = cria_instancia_kNN(trial)
+
+    metricas = cross_val_score(
+        modelo,
+        X,
+        y,
+        scoring=ras,
+        cv=n_folds
+    )
+
+    return metricas.mean()
+
+
+def funcao_objetivo_tree(trial, X, y, n_folds):
+    """Função objetivo do optuna
+
+    Referencia:
+      https://medium.com/@walter_sperat/ using-optuna-with-sklearn-the-right-way-part-1-6b4ad0ab2451
+    """
+
+    modelo = cria_instancia_tree(trial)
+
+    metricas = cross_val_score(
+        modelo,
+        X,
+        y,
+        scoring=ras,
+        cv=n_folds
+    )
+
+    return metricas.mean()
+
+def funcao_objetivo_forest(trial, X, y, n_folds):
+    """Função objetivo do optuna
+
+    Referencia:
+      https://medium.com/@walter_sperat/ using-optuna-with-sklearn-the-right-way-part-1-6b4ad0ab2451
+    """
+
+    modelo = cria_instancia_forest(trial)
+
+    metricas = cross_val_score(
+        modelo,
+        X,
+        y,
+        scoring=ras,
+        cv=n_folds
+    )
+
+    return metricas.mean()
+
+def funcao_objetivo_kNN_ensemble(trial, X, y, n_folds):
+    """Função objetivo do optuna
+
+    Referencia:
+      https://medium.com/@walter_sperat/ using-optuna-with-sklearn-the-right-way-part-1-6b4ad0ab2451
+    """
+
+    modelo = cria_instancia_kNN_ensemble(trial)
+
+    metricas = cross_val_score(
+        modelo,
+        X,
+        y,
+        scoring=ras,
+        cv=n_folds
+    )
+
+    return metricas.mean()
+
+def funcao_objetivo_HGradientBoosting(trial, X, y, n_folds):
+    """Função objetivo do optuna
+
+    Referencia:
+      https://medium.com/@walter_sperat/ using-optuna-with-sklearn-the-right-way-part-1-6b4ad0ab2451
+    """
+
+    modelo = cria_instancia_HGradientBoosting(trial)
+
+    metricas = cross_val_score(
+        modelo,
+        X,
+        y,
+        scoring=ras,
+        cv=n_folds
+    )
+
+    return metricas.mean()
+
+def funcao_objetivo_NB(trial, X, y, n_folds):
+    """Função objetivo do optuna
+
+    Referencia:
+      https://medium.com/@walter_sperat/ using-optuna-with-sklearn-the-right-way-part-1-6b4ad0ab2451
+    """
+
+    modelo = cria_instancia_NB(trial)
+
+    metricas = cross_val_score(
+        modelo,
+        X,
+        y,
+        scoring=ras,
+        cv=n_folds
+    )
+
+    return metricas.mean()
+
+def funcao_objetivo_Stacking(trial, X, y, n_folds):
+    """Função objetivo do optuna
+
+    Referencia:
+      https://medium.com/@walter_sperat/ using-optuna-with-sklearn-the-right-way-part-1-6b4ad0ab2451
+    """
+
+    modelo = cria_instancia_Stacking(trial)
+
+    metricas = cross_val_score(
+        modelo,
+        X,
+        y,
+        scoring=ras,
+        cv=n_folds
+    )
+
+    return metricas.mean()
+
+############################## Creat studies ###########################
+
+NOME_ESTUDO_kNN = "YSO_classifier-kNN"
+
+objeto_de_estudo = create_study(
+    direction="minimize",
+    study_name=NOME_ESTUDO_kNN,
+    storage=f"sqlite:///{NOME_ESTUDO_kNN}.db",
+    load_if_exists=True,
+)
+
+NOME_ESTUDO_tree = "YSO_classifier-Tree"
+
+objeto_de_estudo = create_study(
+    direction="minimize",
+    study_name=NOME_ESTUDO_tree,
+    storage=f"sqlite:///{NOME_ESTUDO_tree}.db",
+    load_if_exists=True,
+)
+
+NOME_ESTUDO_forest = "YSO_classifier-Forest"
+
+objeto_de_estudo = create_study(
+    direction="minimize",
+    study_name=NOME_ESTUDO_forest,
+    storage=f"sqlite:///{NOME_ESTUDO_forest}.db",
+    load_if_exists=True,
+)
+
+NOME_ESTUDO_kNN_ensemble = "YSO_classifier-kNN_ensemble"
+
+objeto_de_estudo = create_study(
+    direction="minimize",
+    study_name=NOME_ESTUDO_kNN_ensemble,
+    storage=f"sqlite:///{NOME_ESTUDO_kNN_ensemble}.db",
+    load_if_exists=True,
+)
+
+NOME_ESTUDO_Hist_Gradient_Boosting = "YSO_classifier-Hist_Gradient_Boosting"
+
+objeto_de_estudo = create_study(
+    direction="minimize",
+    study_name=NOME_ESTUDO_Hist_Gradient_Boosting,
+    storage=f"sqlite:///{NOME_ESTUDO_Hist_Gradient_Boosting}.db",
+    load_if_exists=True,
+)
+
+NOME_ESTUDO_Naive_Bayes = "YSO_classifier-Naive_Bayes"
+
+objeto_de_estudo = create_study(
+    direction="minimize",
+    study_name=NOME_ESTUDO_Naive_Bayes,
+    storage=f"sqlite:///{NOME_ESTUDO_Naive_Bayes}.db",
+    load_if_exists=True,
+)
+
+NOME_ESTUDO_Stacking = "YSO_classifier-Stacking-Linear_SVC_and_Forest"
+
+objeto_de_estudo = create_study(
+    direction="minimize",
+    study_name=NOME_ESTUDO_Stacking,
+    storage=f"sqlite:///{NOME_ESTUDO_Stacking}.db",
+    load_if_exists=True,
+)
+
+
+
+
 
 
 
