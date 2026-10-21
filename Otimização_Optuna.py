@@ -66,7 +66,7 @@ X_treino_b = df_treino_b.reindex(ATRIBUTOS, axis=1).values
 y_treino_b = df_treino_b.reindex(TARGET, axis=1).values.ravel()
 
 # Definindo métrica ROC-AUC
-ras = make_scorer(roc_auc_score, average="weighted", response_method="predict_proba")
+ras = make_scorer(roc_auc_score, average="weighted", response_method="predict_proba", multi_class="ovr")
 
 ############################# Instancias #############################
 def cria_instancia_kNN(trial):
