@@ -2,6 +2,7 @@
 # Bibliotetecas gerais
 import pandas as pd
 import numpy as np
+import copy
 
 # Modelagem
     # Algoritmos
@@ -27,13 +28,13 @@ from sklearn.metrics import (
 from sklearn.model_selection import cross_val_score, StratifiedKFold
     # Normalização
 from sklearn.preprocessing import StandardScaler
+from sklearn.calibration import CalibratedClassifierCV
 
 import optuna
 from optuna import create_study
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 from optuna.samplers import GPSampler
 from functools import partial
-from sklearn.calibration import CalibratedClassifierCV
 
 # Semente aleatória
 RANDOM_SEED = 3001
@@ -61,7 +62,7 @@ X_treino = df_treino.reindex(ATRIBUTOS, axis=1).values
 y_treino = df_treino.reindex(TARGET, axis=1).values.ravel()
 
 X_treino_b = df_treino_b.reindex(ATRIBUTOS, axis=1).values
-y_treino_b = df_treino_b.reindex(TARGET).values.ravel()
+y_treino_b = df_treino_b.reindex(TARGET, axis=1).values.ravel()
 
 # Definindo métrica ROC-AUC
 ras = make_scorer(roc_auc_score, average="weighted", response_method="predict_proba")
@@ -256,10 +257,7 @@ def cria_instancia_NB(trial):
 
     parametros = {
         # Espaço de busca
-        "alpha": trial.suggest_float("alpha", 0.0, 5.0, step=0.1),
-        # Argumentos fixos
-        "fit_prior": True,
-        "force_alpha": True,
+        "var_smoothing": trial.suggest_float("var_smoothing", 1e-9, 1e-4, log=True)
     }
 
     n_features = trial.suggest_int("n_components", 10, 18)
@@ -313,10 +311,7 @@ def cria_instancia_Stacking(trial):
 
     parametros_NB = {
         # Espaço de busca
-        "alpha": trial.suggest_float("alpha", 0.0, 1.0, step=0.05),
-        # Argumentos fixos
-        "fit_prior": True,
-        "force_alpha": True,
+        "var_smoothing": trial.suggest_float("var_smoothing", 1e-9, 1e-4, log=True)
     }
 
     lsvc = CalibratedClassifierCV(
@@ -359,7 +354,7 @@ def cria_instancia_Stacking(trial):
     }
 
     if multicamada:
-        parametros_ultimate_stacking = parametros_stacking.copy()
+        parametros_ultimate_stacking = copy.deepcopy(parametros_stacking)
         parametros_stacking["final_estimator"] = StackingClassifier(**parametros_ultimate_stacking)
 
     n_features = trial.suggest_int("n_components", 10, 18)
@@ -625,8 +620,8 @@ objeto_de_estudo_kNN.enqueue_trial({
 objeto_de_estudo_tree.enqueue_trial({
     "criterion": "gini",
     "max_depth": 100,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
+    "min_samples_split": 0.001,
+    "min_samples_leaf": 0.001,
     "min_weight_fraction_leaf": 0.0,
     "max_leaf_nodes": 200,
     "min_impurity_decrease": 0.0
@@ -637,8 +632,8 @@ objeto_de_estudo_forest.enqueue_trial({
     "n_estimators": 100,
     "criterion": "gini",
     "max_depth": 100,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
+    "min_samples_split": 0.001,
+    "min_samples_leaf": 0.001,
     "min_weight_fraction_leaf": 0.0,
     "max_features": 0.3,
     "max_leaf_nodes": 200,
@@ -650,8 +645,8 @@ objeto_de_estudo_forest.enqueue_trial({
     "n_estimators": 100,
     "criterion": "gini",
     "max_depth": 100,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
+    "min_samples_split": 0.001,
+    "min_samples_leaf": 0.001,
     "min_weight_fraction_leaf": 0.0,
     "max_features": 0.3,
     "max_leaf_nodes": 200,
@@ -706,7 +701,7 @@ objeto_de_estudo_HGradientBoosting.enqueue_trial({
     "max_iter": 100,
     "max_leaf_nodes": 31,
     "max_depth": 100,
-    "min_samples_leaf": 20,
+    "min_samples_leaf": 0.001,
     "l2_regularization": 0.0,
     "max_features": 1.0,
     "max_bins": 255
@@ -717,7 +712,7 @@ objeto_de_estudo_HGradientBoosting.enqueue_trial({
     "max_iter": 100,
     "max_leaf_nodes": 31,
     "max_depth": 100,
-    "min_samples_leaf": 20,
+    "min_samples_leaf": 0.001,
     "l2_regularization": 0.0,
     "max_features": 0.3,
     "max_bins": 255
@@ -725,7 +720,7 @@ objeto_de_estudo_HGradientBoosting.enqueue_trial({
 
 # CategoricalNaiveBayes
 objeto_de_estudo_NB.enqueue_trial({
-    "alpha": 1.0
+    "var_smoothing": 1e-9
 })
 
 # Stackig
@@ -741,8 +736,8 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "n_estimators": 100,
     "criterion": "gini",
     "max_depth": 100,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
+    "min_samples_split": 0.001,
+    "min_samples_leaf": 0.001,
     "min_weight_fraction_leaf": 0.0,
     "max_features": 0.3,
     "max_leaf_nodes": 200,
@@ -773,8 +768,8 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "n_estimators": 100,
     "criterion": "gini",
     "max_depth": 100,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
+    "min_samples_split": 0.001,
+    "min_samples_leaf": 0.001,
     "min_weight_fraction_leaf": 0.0,
     "max_features": 0.3,
     "max_leaf_nodes": 200,
@@ -805,8 +800,8 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "n_estimators": 100,
     "criterion": "gini",
     "max_depth": 100,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
+    "min_samples_split": 0.001,
+    "min_samples_leaf": 0.001,
     "min_weight_fraction_leaf": 0.0,
     "max_features": 0.3,
     "max_leaf_nodes": 200,
@@ -837,8 +832,8 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "n_estimators": 100,
     "criterion": "gini",
     "max_depth": 100,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
+    "min_samples_split": 0.001,
+    "min_samples_leaf": 0.001,
     "min_weight_fraction_leaf": 0.0,
     "max_features": 0.3,
     "max_leaf_nodes": 200,
@@ -869,8 +864,8 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "n_estimators": 100,
     "criterion": "gini",
     "max_depth": 100,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
+    "min_samples_split": 0.001,
+    "min_samples_leaf": 0.001,
     "min_weight_fraction_leaf": 0.0,
     "max_features": 0.3,
     "max_leaf_nodes": 200,
@@ -901,8 +896,8 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "n_estimators": 100,
     "criterion": "gini",
     "max_depth": 100,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
+    "min_samples_split": 0.001,
+    "min_samples_leaf": 0.001,
     "min_weight_fraction_leaf": 0.0,
     "max_features": 0.3,
     "max_leaf_nodes": 200,
@@ -933,8 +928,8 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "n_estimators": 100,
     "criterion": "gini",
     "max_depth": 100,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
+    "min_samples_split": 0.001,
+    "min_samples_leaf": 0.001,
     "min_weight_fraction_leaf": 0.0,
     "max_features": 0.3,
     "max_leaf_nodes": 200,
@@ -965,8 +960,8 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "n_estimators": 100,
     "criterion": "gini",
     "max_depth": 100,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
+    "min_samples_split": 0.001,
+    "min_samples_leaf": 0.001,
     "min_weight_fraction_leaf": 0.0,
     "max_features": 0.3,
     "max_leaf_nodes": 200,
@@ -999,8 +994,8 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "n_estimators": 100,
     "criterion": "gini",
     "max_depth": 100,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
+    "min_samples_split": 0.001,
+    "min_samples_leaf": 0.001,
     "min_weight_fraction_leaf": 0.0,
     "max_features": 0.3,
     "max_leaf_nodes": 200,
@@ -1031,8 +1026,8 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "n_estimators": 100,
     "criterion": "gini",
     "max_depth": 100,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
+    "min_samples_split": 0.001,
+    "min_samples_leaf": 0.001,
     "min_weight_fraction_leaf": 0.0,
     "max_features": 0.3,
     "max_leaf_nodes": 200,
@@ -1063,8 +1058,8 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "n_estimators": 100,
     "criterion": "gini",
     "max_depth": 100,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
+    "min_samples_split": 0.001,
+    "min_samples_leaf": 0.001,
     "min_weight_fraction_leaf": 0.0,
     "max_features": 0.3,
     "max_leaf_nodes": 200,
@@ -1095,8 +1090,8 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "n_estimators": 100,
     "criterion": "gini",
     "max_depth": 100,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
+    "min_samples_split": 0.001,
+    "min_samples_leaf": 0.001,
     "min_weight_fraction_leaf": 0.0,
     "max_features": 0.3,
     "max_leaf_nodes": 200,
@@ -1127,8 +1122,8 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "n_estimators": 100,
     "criterion": "gini",
     "max_depth": 100,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
+    "min_samples_split": 0.001,
+    "min_samples_leaf": 0.001,
     "min_weight_fraction_leaf": 0.0,
     "max_features": 0.3,
     "max_leaf_nodes": 200,
@@ -1159,8 +1154,8 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "n_estimators": 100,
     "criterion": "gini",
     "max_depth": 100,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
+    "min_samples_split": 0.001,
+    "min_samples_leaf": 0.001,
     "min_weight_fraction_leaf": 0.0,
     "max_features": 0.3,
     "max_leaf_nodes": 200,
@@ -1191,8 +1186,8 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "n_estimators": 100,
     "criterion": "gini",
     "max_depth": 100,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
+    "min_samples_split": 0.001,
+    "min_samples_leaf": 0.001,
     "min_weight_fraction_leaf": 0.0,
     "max_features": 0.3,
     "max_leaf_nodes": 200,
@@ -1223,8 +1218,8 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "n_estimators": 100,
     "criterion": "gini",
     "max_depth": 100,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
+    "min_samples_split": 0.001,
+    "min_samples_leaf": 0.001,
     "min_weight_fraction_leaf": 0.0,
     "max_features": 0.3,
     "max_leaf_nodes": 200,
