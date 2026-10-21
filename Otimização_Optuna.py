@@ -10,7 +10,7 @@ import os
 from sklearn.pipeline import make_pipeline
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.svc import LinearSVC
+from sklearn.svm import LinearSVC
 from sklearn.linear_model import RidgeClassifierCV
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import (
