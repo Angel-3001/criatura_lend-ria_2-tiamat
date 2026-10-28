@@ -1,4 +1,4 @@
-############################## Importações ##############################
+############################## ImportaÃ§Ãµes ##############################
 # Bibliotetecas gerais
 import pandas as pd
 import numpy as np
@@ -20,14 +20,14 @@ from sklearn.ensemble import (
     StackingClassifier
 )
 from sklearn.decomposition import PCA
-    # Métricas
+    # MÃ©tricas
 from sklearn.metrics import (
     confusion_matrix,
     make_scorer,
     roc_auc_score
 )
 from sklearn.model_selection import cross_val_score, StratifiedKFold
-    # Normalização
+    # NormalizaÃ§Ã£o
 from sklearn.preprocessing import StandardScaler
 from sklearn.calibration import CalibratedClassifierCV
 
@@ -37,10 +37,10 @@ optuna.logging.set_verbosity(optuna.logging.WARNING)
 from optuna.samplers import GPSampler
 from functools import partial
 
-# Semente aleatória
+# Semente aleatÃ³ria
 RANDOM_SEED = 3001
 
-############################## Definições ##############################
+############################## DefiniÃ§Ãµes ##############################
 ATRIBUTOS = [
     "ra", "dec", "l", "b", "silicate",
     "pah", "env", "mag3_6", "e_mag3_6",
@@ -65,22 +65,22 @@ y_treino = df_treino.reindex(TARGET, axis=1).values.ravel()
 X_treino_b = df_treino_b.reindex(ATRIBUTOS, axis=1).values
 y_treino_b = df_treino_b.reindex(TARGET, axis=1).values.ravel()
 
-# Definindo métrica ROC-AUC
+# Definindo mÃ©trica ROC-AUC
 ras = make_scorer(roc_auc_score, average="weighted", response_method="predict_proba", multi_class="ovr")
 
 ############################# Instancias #############################
 def cria_instancia_kNN(trial):
-    """Cria uma instância do modelo de k-NN.
+    """Cria uma instÃ¢ncia do modelo de k-NN.
 
     Args:
       trial: objeto tipo Trial do optuna.
 
     Returns:
-      Uma instância do modelo desejado.
+      Uma instÃ¢ncia do modelo desejado.
     """
 
     parametros = {
-        # Espaço de busca
+        # EspaÃ§o de busca
         "n_neighbors": trial.suggest_int("n_neighbors", 5, 500, log=True),
         "weights": trial.suggest_categorical("weights", ["uniform", "distance"]),
         "p": trial.suggest_float("p", 1.0, 2, step=0.01),
@@ -99,17 +99,17 @@ def cria_instancia_kNN(trial):
     return modelo
 
 def cria_instancia_tree(trial):
-    """Cria uma instância do modelo de árvore de decisão.
+    """Cria uma instÃ¢ncia do modelo de Ã¡rvore de decisÃ£o.
 
     Args:
       trial: objeto tipo Trial do optuna.
 
     Returns:
-      Uma instância do modelo desejado.
+      Uma instÃ¢ncia do modelo desejado.
     """
 
     parametros = {
-        # Espaço de busca
+        # EspaÃ§o de busca
         "criterion": trial.suggest_categorical("criterion", ["gini", "entropy", "log_loss"]),
         "max_depth": trial.suggest_int("max_depth", 3, 100, log=True),
         "min_samples_split": trial.suggest_float("min_samples_split", 0.001, 0.05, log=True),
@@ -132,17 +132,17 @@ def cria_instancia_tree(trial):
     return modelo
 
 def cria_instancia_forest(trial):
-    """Cria uma instância do modelo de floresta aleatória.
+    """Cria uma instÃ¢ncia do modelo de floresta aleatÃ³ria.
 
     Args:
       trial: objeto tipo Trial do optuna.
 
     Returns:
-      Uma instância do modelo desejado.
+      Uma instÃ¢ncia do modelo desejado.
     """
 
     parametros = {
-        # Espaço de busca
+        # EspaÃ§o de busca
         "n_estimators": trial.suggest_int("n_estimators", 10, 300, log=True),
         "criterion": trial.suggest_categorical("criterion", ["gini", "entropy", "log_loss"]),
         "max_depth": trial.suggest_int("max_depth", 3, 100, log=True),
@@ -169,17 +169,17 @@ def cria_instancia_forest(trial):
     return modelo
 
 def cria_instancia_kNN_ensemble(trial):
-    """Cria uma instância do modelo de floresta aleatória.
+    """Cria uma instÃ¢ncia do modelo de floresta aleatÃ³ria.
 
     Args:
       trial: objeto tipo Trial do optuna.
 
     Returns:
-      Uma instância do modelo desejado.
+      Uma instÃ¢ncia do modelo desejado.
     """
 
     parametros_kNN = {
-        # Espaço de busca
+        # EspaÃ§o de busca
         "n_neighbors": trial.suggest_int("n_neighbors", 5, 500, log=True),
         "weights": trial.suggest_categorical("weights", ["uniform", "distance"]),
         "p": trial.suggest_float("p", 1.0, 2, step=0.01),
@@ -188,7 +188,7 @@ def cria_instancia_kNN_ensemble(trial):
     }
 
     parametros_ensemble = {
-        # Espaço de busca
+        # EspaÃ§o de busca
         "n_estimators": trial.suggest_int("n_estimators", 10, 500, log=True),
         "max_samples": trial.suggest_float("max_samples", 0.7, 1.0, step=0.05),
         "max_features": trial.suggest_float("max_features", 0.2, 1.0, step=0.1),
@@ -210,17 +210,17 @@ def cria_instancia_kNN_ensemble(trial):
     return modelo
 
 def cria_instancia_HGradientBoosting(trial):
-    """Cria uma instância do modelo de floresta aleatória.
+    """Cria uma instÃ¢ncia do modelo de floresta aleatÃ³ria.
 
     Args:
       trial: objeto tipo Trial do optuna.
 
     Returns:
-      Uma instância do modelo desejado.
+      Uma instÃ¢ncia do modelo desejado.
     """
 
     parametros = {
-        # Espaço de busca
+        # EspaÃ§o de busca
         "learning_rate": trial.suggest_float("learning_rate", 0.0, 1.0, step=0.01),
         "max_iter": trial.suggest_int("max_iter", 100, 300, step=5),
         "max_leaf_nodes": trial.suggest_int("max_leaf_nodes", 5, 150, log=True),
@@ -247,17 +247,17 @@ def cria_instancia_HGradientBoosting(trial):
     return modelo
 
 def cria_instancia_NB(trial):
-    """Cria uma instância do modelo de floresta aleatória.
+    """Cria uma instÃ¢ncia do modelo de floresta aleatÃ³ria.
 
     Args:
       trial: objeto tipo Trial do optuna.
 
     Returns:
-      Uma instância do modelo desejado.
+      Uma instÃ¢ncia do modelo desejado.
     """
 
     parametros = {
-        # Espaço de busca
+        # EspaÃ§o de busca
         "var_smoothing": trial.suggest_float("var_smoothing", 1e-9, 1e-4, log=True)
     }
 
@@ -268,22 +268,22 @@ def cria_instancia_NB(trial):
     return modelo
 
 def cria_instancia_Stacking(trial):
-    """Cria uma instância do modelo de floresta aleatória.
+    """Cria uma instÃ¢ncia do modelo de floresta aleatÃ³ria.
 
     Args:
       trial: objeto tipo Trial do optuna.
 
     Returns:
-      Uma instância do modelo desejado.
+      Uma instÃ¢ncia do modelo desejado.
     """
 
     parametros_LinearSVC = {
-      # Espaço de busca
+      # EspaÃ§o de busca
       "penalty": trial.suggest_categorical("penalty", ["l1", "l2"]),
       "loss": trial.suggest_categorical("loss", ['hinge', 'squared_hinge']),
       "tol": trial.suggest_float("tol", 1e-4, 0.01, log=True),
       "C": trial.suggest_float("C", 1e-3, 5.0, log=True),
-      "max_iter": trial.suggest_int("max_iter", 500, 5000, log=True),
+      "max_iter": 10000,
       # Argumentos fixos
       "dual": "auto",
       "multi_class": "ovr",
@@ -293,7 +293,7 @@ def cria_instancia_Stacking(trial):
     }
 
     parametros_forest = {
-        # Espaço de busca
+        # EspaÃ§o de busca
         "n_estimators": trial.suggest_int("n_estimators", 10, 300, log=True),
         "criterion": trial.suggest_categorical("criterion", ["gini", "entropy", "log_loss"]),
         "max_depth": trial.suggest_int("max_depth", 3, 100, log=True),
@@ -311,7 +311,7 @@ def cria_instancia_Stacking(trial):
     }
 
     parametros_NB = {
-        # Espaço de busca
+        # EspaÃ§o de busca
         "var_smoothing": trial.suggest_float("var_smoothing", 1e-9, 1e-4, log=True)
     }
 
@@ -332,7 +332,7 @@ def cria_instancia_Stacking(trial):
     ])
 
     parametros_ridge_CV = {
-        # Espaço de busca
+        # EspaÃ§o de busca
         "alphas": alphas_ridge,
         # Argumentos fixos
         "fit_intercept": True,
@@ -344,7 +344,7 @@ def cria_instancia_Stacking(trial):
     multicamada = trial.suggest_categorical("multilayer", [True, False])
 
     parametros_stacking = {
-        # Espaço de busca
+        # EspaÃ§o de busca
         "stack_method": trial.suggest_categorical("stack_method", ['auto', 'predict_proba', 'decision_function', 'predict']),
         "passthrough": trial.suggest_categorical("passthrough", [True, False]),
         # Argumentos fixos
@@ -361,6 +361,7 @@ def cria_instancia_Stacking(trial):
     n_features = trial.suggest_int("n_components", 10, 18)
 
     modelo = make_pipeline(
+	StandardScaler(),
         PCA(n_features),
         StackingClassifier(**parametros_stacking)
     )
@@ -368,10 +369,10 @@ def cria_instancia_Stacking(trial):
     return modelo
 
 
-############################## Funções Objetivo ###########################
+############################## FunÃ§Ãµes Objetivo ###########################
 
 def funcao_objetivo_kNN(trial, X, y, n_folds):
-    """Função objetivo do optuna
+    """FunÃ§Ã£o objetivo do optuna
 
     Referencia:
       https://medium.com/@walter_sperat/ using-optuna-with-sklearn-the-right-way-part-1-6b4ad0ab2451
@@ -391,7 +392,7 @@ def funcao_objetivo_kNN(trial, X, y, n_folds):
 
 
 def funcao_objetivo_tree(trial, X, y, n_folds):
-    """Função objetivo do optuna
+    """FunÃ§Ã£o objetivo do optuna
 
     Referencia:
       https://medium.com/@walter_sperat/ using-optuna-with-sklearn-the-right-way-part-1-6b4ad0ab2451
@@ -410,7 +411,7 @@ def funcao_objetivo_tree(trial, X, y, n_folds):
     return metricas.mean()
 
 def funcao_objetivo_forest(trial, X, y, n_folds):
-    """Função objetivo do optuna
+    """FunÃ§Ã£o objetivo do optuna
 
     Referencia:
       https://medium.com/@walter_sperat/ using-optuna-with-sklearn-the-right-way-part-1-6b4ad0ab2451
@@ -429,7 +430,7 @@ def funcao_objetivo_forest(trial, X, y, n_folds):
     return metricas.mean()
 
 def funcao_objetivo_kNN_ensemble(trial, X, y, n_folds):
-    """Função objetivo do optuna
+    """FunÃ§Ã£o objetivo do optuna
 
     Referencia:
       https://medium.com/@walter_sperat/ using-optuna-with-sklearn-the-right-way-part-1-6b4ad0ab2451
@@ -448,7 +449,7 @@ def funcao_objetivo_kNN_ensemble(trial, X, y, n_folds):
     return metricas.mean()
 
 def funcao_objetivo_HGradientBoosting(trial, X, y, n_folds):
-    """Função objetivo do optuna
+    """FunÃ§Ã£o objetivo do optuna
 
     Referencia:
       https://medium.com/@walter_sperat/ using-optuna-with-sklearn-the-right-way-part-1-6b4ad0ab2451
@@ -467,7 +468,7 @@ def funcao_objetivo_HGradientBoosting(trial, X, y, n_folds):
     return metricas.mean()
 
 def funcao_objetivo_NB(trial, X, y, n_folds):
-    """Função objetivo do optuna
+    """FunÃ§Ã£o objetivo do optuna
 
     Referencia:
       https://medium.com/@walter_sperat/ using-optuna-with-sklearn-the-right-way-part-1-6b4ad0ab2451
@@ -486,7 +487,7 @@ def funcao_objetivo_NB(trial, X, y, n_folds):
     return metricas.mean()
 
 def funcao_objetivo_Stacking(trial, X, y, n_folds):
-    """Função objetivo do optuna
+    """FunÃ§Ã£o objetivo do optuna
 
     Referencia:
       https://medium.com/@walter_sperat/ using-optuna-with-sklearn-the-right-way-part-1-6b4ad0ab2451
@@ -605,10 +606,10 @@ funcao_objetivo_parcial_NB = partial(
 )
 
 funcao_objetivo_parcial_Stacking = partial(
-    funcao_objetivo_Stacking, X=X_treino, y=y_treino, n_folds=NUM_FOLDS
+    funcao_objetivo_Stacking, X=X_treino, y=y_treino, n_folds=NUM_FOLDS//2
 )
 
-############################## Forçando trials ###########################
+############################## ForÃ§ando trials ###########################
 
 # kNN
 objeto_de_estudo_kNN.enqueue_trial({
@@ -731,7 +732,6 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
-    "max_iter": 1000,
 
     # Random Forest
     "n_estimators": 100,
@@ -763,7 +763,6 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
-    "max_iter": 1000,
 
     # Random Forest
     "n_estimators": 100,
@@ -795,7 +794,6 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
-    "max_iter": 1000,
 
     # Random Forest
     "n_estimators": 100,
@@ -827,7 +825,6 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
-    "max_iter": 1000,
 
     # Random Forest
     "n_estimators": 100,
@@ -859,7 +856,6 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
-    "max_iter": 1000,
 
     # Random Forest
     "n_estimators": 100,
@@ -891,7 +887,6 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
-    "max_iter": 1000,
 
     # Random Forest
     "n_estimators": 100,
@@ -923,7 +918,6 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
-    "max_iter": 1000,
 
     # Random Forest
     "n_estimators": 100,
@@ -955,7 +949,6 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
-    "max_iter": 1000,
 
     # Random Forest
     "n_estimators": 100,
@@ -989,7 +982,6 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
-    "max_iter": 1000,
 
     # Random Forest
     "n_estimators": 100,
@@ -1021,7 +1013,6 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
-    "max_iter": 1000,
 
     # Random Forest
     "n_estimators": 100,
@@ -1053,7 +1044,6 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
-    "max_iter": 1000,
 
     # Random Forest
     "n_estimators": 100,
@@ -1085,7 +1075,6 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
-    "max_iter": 1000,
 
     # Random Forest
     "n_estimators": 100,
@@ -1117,7 +1106,6 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
-    "max_iter": 1000,
 
     # Random Forest
     "n_estimators": 100,
@@ -1149,7 +1137,6 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
-    "max_iter": 1000,
 
     # Random Forest
     "n_estimators": 100,
@@ -1181,7 +1168,6 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
-    "max_iter": 1000,
 
     # Random Forest
     "n_estimators": 100,
@@ -1213,7 +1199,6 @@ objeto_de_estudo_Stacking.enqueue_trial({
     "loss": "squared_hinge",
     "tol": 1e-4,
     "C": 1.0,
-    "max_iter": 1000,
 
     # Random Forest
     "n_estimators": 100,
@@ -1274,35 +1259,35 @@ objeto_de_estudo_Stacking.optimize(
 
 melhor_trial_kNN = objeto_de_estudo_kNN.best_trial
 
-print(f"Número do melhor trial: {melhor_trial_kNN.number}")
-print(f"Parâmetros do melhor trial: {melhor_trial_kNN.params}")
+print(f"NÃºmero do melhor trial: {melhor_trial_kNN.number}")
+print(f"ParÃ¢metros do melhor trial: {melhor_trial_kNN.params}")
 
 melhor_trial_tree = objeto_de_estudo_tree.best_trial
 
-print(f"Número do melhor trial: {melhor_trial_tree.number}")
-print(f"Parâmetros do melhor trial: {melhor_trial_tree.params}")
+print(f"NÃºmero do melhor trial: {melhor_trial_tree.number}")
+print(f"ParÃ¢metros do melhor trial: {melhor_trial_tree.params}")
 
 melhor_trial_forest = objeto_de_estudo_forest.best_trial
 
-print(f"Número do melhor trial: {melhor_trial_forest.number}")
-print(f"Parâmetros do melhor trial: {melhor_trial_forest.params}")
+print(f"NÃºmero do melhor trial: {melhor_trial_forest.number}")
+print(f"ParÃ¢metros do melhor trial: {melhor_trial_forest.params}")
 
 melhor_trial_kNN_ensamble = objeto_de_estudo_kNN_ensemble.best_trial
 
-print(f"Número do melhor trial: {melhor_trial_kNN_ensamble.number}")
-print(f"Parâmetros do melhor trial: {melhor_trial_kNN_ensamble.params}")
+print(f"NÃºmero do melhor trial: {melhor_trial_kNN_ensamble.number}")
+print(f"ParÃ¢metros do melhor trial: {melhor_trial_kNN_ensamble.params}")
 
 melhor_trial_HGradientBoosting = objeto_de_estudo_HGradientBoosting.best_trial
 
-print(f"Número do melhor trial: {melhor_trial_HGradientBoosting.number}")
-print(f"Parâmetros do melhor trial: {melhor_trial_HGradientBoosting.params}")
+print(f"NÃºmero do melhor trial: {melhor_trial_HGradientBoosting.number}")
+print(f"ParÃ¢metros do melhor trial: {melhor_trial_HGradientBoosting.params}")
 
 melhor_trial_NB = objeto_de_estudo_NB.best_trial
 
-print(f"Número do melhor trial: {melhor_trial_NB.number}")
-print(f"Parâmetros do melhor trial: {melhor_trial_NB.params}")
+print(f"NÃºmero do melhor trial: {melhor_trial_NB.number}")
+print(f"ParÃ¢metros do melhor trial: {melhor_trial_NB.params}")
 
 melhor_trial_Stacking = objeto_de_estudo_Stacking.best_trial
 
-print(f"Número do melhor trial: {melhor_trial_Stacking.number}")
-print(f"Parâmetros do melhor trial: {melhor_trial_Stacking.params}")
+print(f"NÃºmero do melhor trial: {melhor_trial_Stacking.number}")
+print(f"ParÃ¢metros do melhor trial: {melhor_trial_Stacking.params}")
