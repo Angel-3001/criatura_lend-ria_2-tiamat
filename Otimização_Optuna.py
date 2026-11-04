@@ -183,8 +183,6 @@ def cria_instancia_kNN_ensemble(trial):
         "n_neighbors": trial.suggest_int("n_neighbors", 5, 500, log=True),
         "weights": trial.suggest_categorical("weights", ["uniform", "distance"]),
         "p": trial.suggest_float("p", 1.0, 2, step=0.01),
-        #Argumentos fixos
-        "n_jobs": -1,
     }
 
     parametros_ensemble = {
@@ -228,7 +226,7 @@ def cria_instancia_HGradientBoosting(trial):
         "min_samples_leaf": trial.suggest_int("min_samples_leaf", 100, 1000, log=True),
         "l2_regularization": trial.suggest_float("l2_regularization", 0.0, 9.0, step=0.5),
         "max_features": trial.suggest_float("max_features", 0.2, 1.0),
-        "max_bins": trial.suggest_int("max_bins", 100, 400, step=10),
+        "max_bins": trial.suggest_int("max_bins", 100, 255, step=5),
 
         # Argumentos fixos
         "validation_fraction": 0.1,
@@ -345,7 +343,7 @@ def cria_instancia_Stacking(trial):
 
     parametros_stacking = {
         # EspaÃ§o de busca
-        "stack_method": trial.suggest_categorical("stack_method", ['auto', 'predict_proba', 'decision_function', 'predict']),
+        "stack_method": trial.suggest_categorical("stack_method", ['auto', 'predict_proba']),
         "passthrough": trial.suggest_categorical("passthrough", [True, False]),
         # Argumentos fixos
         "estimators": estimators,
