@@ -1,0 +1,122 @@
+[I 2026-11-06 19:26:34,099] A new study created in RDB with name: YSO_classifier-kNN_v2
+[I 2026-11-06 19:26:38,554] A new study created in RDB with name: YSO_classifier-Tree_v2
+[I 2026-11-06 19:26:42,739] A new study created in RDB with name: YSO_classifier-Forest_v2
+[I 2026-11-06 19:26:47,039] A new study created in RDB with name: YSO_classifier-kNN_ensemble_v2
+[I 2026-11-06 19:26:51,805] A new study created in RDB with name: YSO_classifier-Hist_Gradient_Boosting_v2
+[I 2026-11-06 19:26:55,591] A new study created in RDB with name: YSO_classifier-Naive_Bayes_v2
+[I 2026-11-06 19:26:59,288] A new study created in RDB with name: YSO_classifier-Stacking-LinearSVC_Forest_NB-LogReg-Multilayer_or_not_v2
+[W 2026-11-06 19:27:12,088] Trial 0 failed with parameters: {'var_smoothing': 1e-09} because of the following error: TypeError('only integer scalar arrays can be converted to a scalar index').
+Traceback (most recent call last):
+  File "/home/angel2610002/.local/lib/python3.11/site-packages/optuna/study/_optimize.py", line 206, in _run_trial
+    value_or_values = func(trial)
+                      ^^^^^^^^^^^
+  File "/home/angel2610002/aprendizado_de_maquina/Otimizacao_Optuna_2.py", line 459, in funcao_objetivo_NB
+    return valida(cria_instancia_NB(trial), X, y, grupos, n_folds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/angel2610002/aprendizado_de_maquina/Otimizacao_Optuna_2.py", line 425, in valida
+    metricas = cross_val_score(
+               ^^^^^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/sklearn/utils/_param_validation.py", line 218, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/sklearn/model_selection/_validation.py", line 650, in cross_val_score
+    cv_results = cross_validate(
+                 ^^^^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/sklearn/utils/_param_validation.py", line 218, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/sklearn/model_selection/_validation.py", line 372, in cross_validate
+    results = parallel(
+              ^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/sklearn/utils/parallel.py", line 91, in __call__
+    return super().__call__(iterable_with_config_and_warning_filters)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/joblib/parallel.py", line 1986, in __call__
+    return output if self.return_generator else list(output)
+                                                ^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/joblib/parallel.py", line 1914, in _get_sequential_output
+    res = func(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/sklearn/utils/parallel.py", line 184, in __call__
+    return self.function(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/sklearn/model_selection/_validation.py", line 832, in _fit_and_score
+    X_train, y_train = _safe_split(estimator, X, y, train)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/sklearn/utils/metaestimators.py", line 173, in _safe_split
+    y_subset = _safe_indexing(y, indices)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/sklearn/utils/_indexing.py", line 314, in _safe_indexing
+    return _array_indexing(X, indices, indices_dtype, axis=axis)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/sklearn/utils/_indexing.py", line 62, in _array_indexing
+    return array[key, ...] if axis == 0 else array[:, key]
+           ~~~~~^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/pandas/core/arrays/arrow/array.py", line 799, in __getitem__
+    value = self._pa_array[item]
+            ~~~~~~~~~~~~~~^^^^^^
+  File "pyarrow/table.pxi", line 316, in pyarrow.lib.ChunkedArray.__getitem__
+TypeError: only integer scalar arrays can be converted to a scalar index
+[W 2026-11-06 19:27:12,310] Trial 0 failed with value None.
+Traceback (most recent call last):
+  File "/home/angel2610002/aprendizado_de_maquina/Otimizacao_Optuna_2.py", line 660, in <module>
+    objeto_de_estudo_NB.optimize(
+  File "/home/angel2610002/.local/lib/python3.11/site-packages/optuna/study/study.py", line 502, in optimize
+    _optimize(
+  File "/home/angel2610002/.local/lib/python3.11/site-packages/optuna/study/_optimize.py", line 68, in _optimize
+    _optimize_sequential(
+  File "/home/angel2610002/.local/lib/python3.11/site-packages/optuna/study/_optimize.py", line 165, in _optimize_sequential
+    frozen_trial_id = _run_trial(study, func, catch)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/angel2610002/.local/lib/python3.11/site-packages/optuna/study/_optimize.py", line 263, in _run_trial
+    raise func_err
+  File "/home/angel2610002/.local/lib/python3.11/site-packages/optuna/study/_optimize.py", line 206, in _run_trial
+    value_or_values = func(trial)
+                      ^^^^^^^^^^^
+  File "/home/angel2610002/aprendizado_de_maquina/Otimizacao_Optuna_2.py", line 459, in funcao_objetivo_NB
+    return valida(cria_instancia_NB(trial), X, y, grupos, n_folds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/angel2610002/aprendizado_de_maquina/Otimizacao_Optuna_2.py", line 425, in valida
+    metricas = cross_val_score(
+               ^^^^^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/sklearn/utils/_param_validation.py", line 218, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/sklearn/model_selection/_validation.py", line 650, in cross_val_score
+    cv_results = cross_validate(
+                 ^^^^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/sklearn/utils/_param_validation.py", line 218, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/sklearn/model_selection/_validation.py", line 372, in cross_validate
+    results = parallel(
+              ^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/sklearn/utils/parallel.py", line 91, in __call__
+    return super().__call__(iterable_with_config_and_warning_filters)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/joblib/parallel.py", line 1986, in __call__
+    return output if self.return_generator else list(output)
+                                                ^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/joblib/parallel.py", line 1914, in _get_sequential_output
+    res = func(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/sklearn/utils/parallel.py", line 184, in __call__
+    return self.function(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/sklearn/model_selection/_validation.py", line 832, in _fit_and_score
+    X_train, y_train = _safe_split(estimator, X, y, train)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/sklearn/utils/metaestimators.py", line 173, in _safe_split
+    y_subset = _safe_indexing(y, indices)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/sklearn/utils/_indexing.py", line 314, in _safe_indexing
+    return _array_indexing(X, indices, indices_dtype, axis=axis)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/sklearn/utils/_indexing.py", line 62, in _array_indexing
+    return array[key, ...] if axis == 0 else array[:, key]
+           ~~~~~^^^^^^^^^^
+  File "/home/angel2610002/miniconda3/envs/ilumpy/lib/python3.11/site-packages/pandas/core/arrays/arrow/array.py", line 799, in __getitem__
+    value = self._pa_array[item]
+            ~~~~~~~~~~~~~~^^^^^^
+  File "pyarrow/table.pxi", line 316, in pyarrow.lib.ChunkedArray.__getitem__
+TypeError: only integer scalar arrays can be converted to a scalar index
