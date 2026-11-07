@@ -76,9 +76,15 @@ df_treino = pd.read_csv("YSOs-Dados_treino-Ordinal_encoder.csv")
 
 # Obs.: df[lista] dá KeyError se faltar alguma coluna (reindex criaria uma coluna toda NaN).
 X_treino = df_treino[ATRIBUTOS]
-y_treino = df_treino[TARGET].values            # array 1-D (um DataFrame (n,1) zera todas as métricas)
+y_treino = df_treino[TARGET].to_numpy(dtype="object")     # array 1-D (um DataFrame (n,1) zera todas as métricas)
 
-grupos = df_treino.groupby(["group"]).ngroup()
+grupos = df_treino.groupby(["group"]).ngroup().to_numpy()
+
+print(type(X_treino))
+print(type(y_treino))
+print(type(grupos))
+
+print(y_treino.dtype)
 
 pesos_classes = np.array([
     len(df_treino)/(4 * len(df_treino.loc[df_treino[TARGET] == classe]))
@@ -496,7 +502,7 @@ objeto_de_estudo_Stacking = cria_estudo(NOME_ESTUDO_Stacking)
 NUM_FOLDS=10
 
 def objetivo_parcial(funcao, n_folds):
-    return partial(funcao, X=X_treino, y=y_treino, n_folds=n_folds)
+    return partial(funcao, X=X_treino, y=y_treino, grupos=grupos, n_folds=n_folds)
 
 funcao_objetivo_parcial_kNN = objetivo_parcial(funcao_objetivo_kNN, NUM_FOLDS)
 funcao_objetivo_parcial_tree = objetivo_parcial(funcao_objetivo_tree, NUM_FOLDS)
