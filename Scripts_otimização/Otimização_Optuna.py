@@ -1,52 +1,67 @@
 ############################## ImportaÃ§Ãµes ##############################
 # Bibliotetecas gerais
-import pandas as pd
-import numpy as np
-import copy
-import os
+import pandas as pd     # Usado para carregar os arquivos.
+import numpy as np      # Usado para trabalhar com arrays.
+import copy             # Usado para copiar algumas coisas no Stacking.
 
 # Modelagem
     # Algoritmos
-from sklearn.pipeline import make_pipeline
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.svm import LinearSVC
-from sklearn.linear_model import RidgeClassifierCV
-from sklearn.naive_bayes import GaussianNB
+from sklearn.pipeline import make_pipeline              # Cria pipeline.
+from sklearn.neighbors import KNeighborsClassifier      # Classificador k-NN.
+from sklearn.tree import DecisionTreeClassifier         # Árvore de Decisão classificadora.
+from sklearn.svm import LinearSVC                       # SVM Linear SVC.
+from sklearn.linear_model import LogisticRegression      # SVM Ridge CV.
+from sklearn.naive_bayes import GaussianNB              # Algoritmo Naive-Bayes Gaussiano.
+        # Algoritmos de comitê
 from sklearn.ensemble import (
-    RandomForestClassifier,
-    HistGradientBoostingClassifier,
-    BaggingClassifier,
-    StackingClassifier
+    RandomForestClassifier,             # Floresta Aleatória classificadora.
+    HistGradientBoostingClassifier,     # Classificador Gradient Boosting por Histograma.
+    BaggingClassifier,                  # Cria classificador por Bagging.
+    StackingClassifier                  # Cria classificador por Stacking.
 )
-from sklearn.decomposition import PCA
-    # MÃ©tricas
+    # Outras coisas mais
+from sklearn.model_selection import (
+    cross_val_score,                                        # Validação cruzada.
+    StratifiedKFold                                         # Cria k-Folds estratificados.
+)
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler            # Normalizador padrão.
+from sklearn.preprocessing import QuantileTransformer
+from sklearn.decomposition import PCA                       # Redução de dimensionalidade
+                                                            #   por PCA.
+from sklearn.calibration import CalibratedClassifierCV      # Calibração do Ridge CV, para
+                                                            #   correção de algumas coisas.
+    # Métricas
 from sklearn.metrics import (
-    confusion_matrix,
-    make_scorer,
-    roc_auc_score
+    roc_auc_score,              # Métrica ROC-AUC
+    make_scorer                 # Usado para fazer uma métrica personalizada, corrigindo
+                                #   certas peculiaridades.
 )
-from sklearn.model_selection import cross_val_score, StratifiedKFold
-    # NormalizaÃ§Ã£o
-from sklearn.preprocessing import StandardScaler
-from sklearn.calibration import CalibratedClassifierCV
 
-import optuna
-from optuna import create_study
-optuna.logging.set_verbosity(optuna.logging.WARNING)
-from optuna.samplers import GPSampler
-from functools import partial
+# Optuna
+import optuna                                           # Optuna.
+from optuna import create_study                         # Cria o estudo.
+optuna.logging.set_verbosity(optuna.logging.WARNING)    # Não mostra cada trial no log.
+from optuna.samplers import GPSampler                   # Buscador Gaussiano.
+from functools import partial                           # Usado para fazer a função objetivo
+                                                        #   parcial.
 
 # Semente aleatÃ³ria
 RANDOM_SEED = 3001
 
-############################## DefiniÃ§Ãµes ##############################
+############################## Definições ##############################
 ATRIBUTOS = [
-    "ra", "dec", "l", "b", "silicate",
-    "pah", "env", "mag3_6", "e_mag3_6",
+    "ra", "dec", "l", "b", "env", "mag3_6", "e_mag3_6",
     "mag4_5", "e_mag4_5", "mag5_8", "e_mag5_8", "mag8_0",
-    "e_mag8_0", "csf", "m3_6", "m4_5", "m5_8", "m8_0"
+    "e_mag8_0", "c_mag36_45", "c_mag45_58", "c_mag58_80",
+    "c_mag36_80", "csf", "m3_6", "m4_5", "m5_8", "m8_0"
 ]
+
+ATRIBUTOS_NB = [
+    "mag3_6", "e_mag3_6", "mag4_5", "e_mag4_5", "mag5_8", "e_mag5_8",
+    "mag8_0", "e_mag8_0", "c_mag36_45", "c_mag45_58", "c_mag58_80", "c_mag36_80"
+]
+
 TARGET = ["class"]
 
 CLASSES = ["ClassI", "FS", "ClassII", "ClassIII"]
@@ -59,10 +74,10 @@ pesos_classes = np.array([
     for classe in CLASSES
 ])
 
-X_treino = df_treino.reindex(ATRIBUTOS, axis=1).values
+X_treino = df_treino.reindex(ATRIBUTOS, axis=1)
 y_treino = df_treino.reindex(TARGET, axis=1).values.ravel()
 
-X_treino_b = df_treino_b.reindex(ATRIBUTOS, axis=1).values
+X_treino_b = df_treino_b.reindex(ATRIBUTOS, axis=1)
 y_treino_b = df_treino_b.reindex(TARGET, axis=1).values.ravel()
 
 # Definindo mÃ©trica ROC-AUC
@@ -81,14 +96,12 @@ def cria_instancia_kNN(trial):
 
     parametros = {
         # EspaÃ§o de busca
-        "n_neighbors": trial.suggest_int("n_neighbors", 5, 500, log=True),
+        "n_neighbors": trial.suggest_int("n_neighbors", 500, 5000, log=True),
         "weights": trial.suggest_categorical("weights", ["uniform", "distance"]),
         "p": trial.suggest_float("p", 1.0, 2, step=0.01),
-        # Argumentos fixos
-        "n_jobs": -1,
     }
 
-    n_features = trial.suggest_int("n_components", 10, 15)
+    n_features = trial.suggest_int("n_components", 10, 20)
 
     modelo = make_pipeline(
         PCA(n_features),
@@ -111,18 +124,18 @@ def cria_instancia_tree(trial):
     parametros = {
         # EspaÃ§o de busca
         "criterion": trial.suggest_categorical("criterion", ["gini", "entropy", "log_loss"]),
-        "max_depth": trial.suggest_int("max_depth", 3, 100, log=True),
+        "max_depth": trial.suggest_int("max_depth", 3, 300, log=True),
         "min_samples_split": trial.suggest_float("min_samples_split", 0.001, 0.05, log=True),
         "min_samples_leaf": trial.suggest_float("mins_samples_leaf", 0.001, 0.05, log=True),
         "min_weight_fraction_leaf": trial.suggest_float("min_weight_fraction_leaf", 0.0, 0.5, step=0.1),
-        "max_leaf_nodes": trial.suggest_int("max_leaf_nodes", 6, 200, log=True),
+        "max_leaf_nodes": trial.suggest_int("max_leaf_nodes", 6, 500, log=True),
         "min_impurity_decrease": trial.suggest_float("min_impurity_decrease", 0.0, 0.5, step=0.1),
         # Argumentos fixos
         "class_weight": "balanced",
         "random_state": RANDOM_SEED,
     }
 
-    n_features = trial.suggest_int("n_components", 10, 18)
+    n_features = trial.suggest_int("n_components", 12, 20)
 
     modelo = make_pipeline(
         PCA(n_features),
@@ -143,14 +156,14 @@ def cria_instancia_forest(trial):
 
     parametros = {
         # EspaÃ§o de busca
-        "n_estimators": trial.suggest_int("n_estimators", 10, 300, log=True),
+        "n_estimators": trial.suggest_int("n_estimators", 100, 500, log=True),
         "criterion": trial.suggest_categorical("criterion", ["gini", "entropy", "log_loss"]),
-        "max_depth": trial.suggest_int("max_depth", 3, 100, log=True),
+        "max_depth": trial.suggest_int("max_depth", 3, 500, log=True),
         "min_samples_split": trial.suggest_float("min_samples_split", 0.001, 0.05, log=True),
         "min_samples_leaf": trial.suggest_float("mins_samples_leaf", 0.001, 0.05, log=True),
         "min_weight_fraction_leaf": trial.suggest_float("min_weight_fraction_leaf", 0.0, 0.5, step=0.1),
         "max_features": trial.suggest_float("max_features", 0.2, 1.0, step=0.05),
-        "max_leaf_nodes": trial.suggest_int("max_leaf_nodes", 6, 200, log=True),
+        "max_leaf_nodes": trial.suggest_int("max_leaf_nodes", 6, 500, log=True),
         "min_impurity_decrease": trial.suggest_float("min_impurity_decrease", 0.0, 0.5, step=0.1),
         "class_weight": trial.suggest_categorical("class_weight", ["balanced", "balanced_subsample"]),
         # Argumentos fixos
@@ -159,7 +172,7 @@ def cria_instancia_forest(trial):
         "random_state": RANDOM_SEED,
     }
 
-    n_features = trial.suggest_int("n_components", 10, 18)
+    n_features = trial.suggest_int("n_components", 12, 20)
 
     modelo = make_pipeline(
         PCA(n_features),
@@ -180,7 +193,7 @@ def cria_instancia_kNN_ensemble(trial):
 
     parametros_kNN = {
         # EspaÃ§o de busca
-        "n_neighbors": trial.suggest_int("n_neighbors", 5, 500, log=True),
+        "n_neighbors": trial.suggest_int("n_neighbors", 500, 5000, log=True),
         "weights": trial.suggest_categorical("weights", ["uniform", "distance"]),
         "p": trial.suggest_float("p", 1.0, 2, step=0.01),
     }
@@ -219,10 +232,10 @@ def cria_instancia_HGradientBoosting(trial):
 
     parametros = {
         # EspaÃ§o de busca
-        "learning_rate": trial.suggest_float("learning_rate", 0.0, 1.0, step=0.01),
-        "max_iter": trial.suggest_int("max_iter", 100, 300, step=5),
+        "learning_rate": trial.suggest_float("learning_rate", 0.01, 1.0, step=0.01),
+        "max_iter": trial.suggest_int("max_iter", 100, 500, step=5),
         "max_leaf_nodes": trial.suggest_int("max_leaf_nodes", 5, 150, log=True),
-        "max_depth": trial.suggest_int("max_depth", 3, 100, log=True),
+        "max_depth": trial.suggest_int("max_depth", 3, 300, log=True),
         "min_samples_leaf": trial.suggest_int("min_samples_leaf", 100, 1000, log=True),
         "l2_regularization": trial.suggest_float("l2_regularization", 0.0, 9.0, step=0.5),
         "max_features": trial.suggest_float("max_features", 0.2, 1.0),
@@ -230,7 +243,6 @@ def cria_instancia_HGradientBoosting(trial):
 
         # Argumentos fixos
         "validation_fraction": 0.1,
-        "verbose": 1,
         "class_weight": "balanced",
         "random_state": RANDOM_SEED,
     }
@@ -256,12 +268,14 @@ def cria_instancia_NB(trial):
 
     parametros = {
         # EspaÃ§o de busca
-        "var_smoothing": trial.suggest_float("var_smoothing", 1e-9, 1e-4, log=True)
+        "var_smoothing": trial.suggest_float("var_smoothing", 1e-9, 1e-1, log=True)
     }
 
-    n_features = trial.suggest_int("n_components", 10, 18)
-
-    modelo = GaussianNB(**parametros)
+    modelo = make_pipeline(
+        ColumnTransformer([("fotometria", "passthrough", ATRIBUTOS_NB)], remainder="drop"),
+        QuantileTransformer(output_distribution="normal"),
+        GaussianNB(**parametros),
+    )
 
     return modelo
 
@@ -274,32 +288,33 @@ def cria_instancia_Stacking(trial):
     Returns:
       Uma instÃ¢ncia do modelo desejado.
     """
+    
+    n_features = trial.suggest_int("n_components", 10, 18)
 
     parametros_LinearSVC = {
       # EspaÃ§o de busca
       "penalty": trial.suggest_categorical("penalty", ["l1", "l2"]),
-      "loss": trial.suggest_categorical("loss", ['hinge', 'squared_hinge']),
       "tol": trial.suggest_float("tol", 1e-4, 0.01, log=True),
       "C": trial.suggest_float("C", 1e-3, 5.0, log=True),
-      "max_iter": 10000,
       # Argumentos fixos
-      "dual": "auto",
+      "loss": "squared_hinge",
+      "max_iter": 5000,
+      "dual": False,
       "multi_class": "ovr",
       "class_weight": "balanced",
-      "n_jobs": -1,
       "random_state": RANDOM_SEED,
     }
 
     parametros_forest = {
         # EspaÃ§o de busca
-        "n_estimators": trial.suggest_int("n_estimators", 10, 300, log=True),
+        "n_estimators": trial.suggest_int("n_estimators", 100, 500, log=True),
         "criterion": trial.suggest_categorical("criterion", ["gini", "entropy", "log_loss"]),
-        "max_depth": trial.suggest_int("max_depth", 3, 100, log=True),
+        "max_depth": trial.suggest_int("max_depth", 3, 500, log=True),
         "min_samples_split": trial.suggest_float("min_samples_split", 0.001, 0.05, log=True),
         "min_samples_leaf": trial.suggest_float("mins_samples_leaf", 0.001, 0.05, log=True),
         "min_weight_fraction_leaf": trial.suggest_float("min_weight_fraction_leaf", 0.0, 0.5, step=0.1),
-        "max_features": trial.suggest_float("max_features", 0.2, 1.0, step=0.1),
-        "max_leaf_nodes": trial.suggest_int("max_leaf_nodes", 6, 200, log=True),
+        "max_features": trial.suggest_float("max_features", 0.2, 1.0, step=0.05),
+        "max_leaf_nodes": trial.suggest_int("max_leaf_nodes", 6, 500, log=True),
         "min_impurity_decrease": trial.suggest_float("min_impurity_decrease", 0.0, 0.5, step=0.1),
         "class_weight": trial.suggest_categorical("class_weight", ["balanced", "balanced_subsample"]),
         # Argumentos fixos
@@ -310,57 +325,78 @@ def cria_instancia_Stacking(trial):
 
     parametros_NB = {
         # EspaÃ§o de busca
-        "var_smoothing": trial.suggest_float("var_smoothing", 1e-9, 1e-4, log=True)
+        "var_smoothing": trial.suggest_float("var_smoothing", 1e-9, 1e-1, log=True)
     }
 
     lsvc = CalibratedClassifierCV(
-        LinearSVC(**parametros_LinearSVC),
+        make_pipeline(
+            StandardScaler(),
+            PCA(n_features),
+            LinearSVC(**parametros_LinearSVC)
+        ),
         cv=5
+    )
+
+    rfc = make_pipeline(
+        PCA(n_features),
+        RandomForestClassifier(**parametros_forest)
+    )
+
+    gnb = make_pipeline(
+        ColumnTransformer([("fotometria", "passthrough", ATRIBUTOS_NB)], remainder="drop"),
+        QuantileTransformer(output_distribution="normal"),
+        GaussianNB(**parametros_NB),
     )
 
     estimators = [
       ("lsvc", lsvc),
-      ("rfc", RandomForestClassifier(**parametros_forest )),
-      ("cnb", GaussianNB(**parametros_NB))
+      ("rfc", rfc),
+      ("gnb", gnb)
     ]
 
-    alphas_ridge = np.array([
-        trial.suggest_float(f"alpha {i}", 1e-3, 1.0, log=True)
-        for i in range(3)
-    ])
-
-    parametros_ridge_CV = {
+    parametros_logistic_regression = {
         # EspaÃ§o de busca
-        "alphas": alphas_ridge,
+        "C": trial.suggest_float("C_final", 1e-2, 10.0, log=True),
         # Argumentos fixos
-        "fit_intercept": True,
-        "scoring": ras,
-        "cv": StratifiedKFold(5, shuffle=True, random_state=RANDOM_SEED),
         "class_weight": "balanced",
+        "max_iter": 5000
     }
 
     multicamada = trial.suggest_categorical("multilayer", [True, False])
 
     parametros_stacking = {
-        # EspaÃ§o de busca
-        "stack_method": trial.suggest_categorical("stack_method", ['auto', 'predict_proba']),
+        # EspaÃ§o de busca,
         "passthrough": trial.suggest_categorical("passthrough", [True, False]),
         # Argumentos fixos
+        "stack_method": "predict_proba",
         "estimators": estimators,
-        "final_estimator": RidgeClassifierCV(**parametros_ridge_CV),
+        "final_estimator": LogisticRegression(**parametros_logistic_regression),
         "cv": StratifiedKFold(5, shuffle=True, random_state=RANDOM_SEED),
         "n_jobs": -1,
     }
 
     if multicamada:
-        parametros_ultimate_stacking = copy.deepcopy(parametros_stacking)
-        parametros_stacking["final_estimator"] = StackingClassifier(**parametros_ultimate_stacking)
+        lr2 = make_pipeline(
+            StandardScaler(), 
+            LogisticRegression(**parametros_logistic_regression)
+        )
 
-    n_features = trial.suggest_int("n_components", 10, 18)
+        rfc2 = RandomForestClassifier(**parametros_forest)
+        camada2 = [
+            ("lr2", lr2),
+            ("rf2", RandomForestClassifier(n_estimators=100, max_depth=6,
+                class_weight="balanced", n_jobs=-1, random_state=RANDOM_SEED)),
+        ]
+        parametros_stacking["final_estimator"] = StackingClassifier(
+            estimators=camada2,
+            final_estimator=LogisticRegression(**parametros_logistic_regression),
+            stack_method="predict_proba",
+            cv=StratifiedKFold(5, shuffle=True, random_state=RANDOM_SEED),
+            n_jobs=-1,
+        )
+
 
     modelo = make_pipeline(
-	StandardScaler(),
-        PCA(n_features),
         StackingClassifier(**parametros_stacking)
     )
 
